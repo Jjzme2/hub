@@ -9,6 +9,12 @@ export interface SuiteApp {
   order: number
 }
 
+export interface UserPreferences {
+  theme: 'light' | 'dark' | 'system'
+  primaryColor: string
+  neutralColor: string
+}
+
 export interface UserProfile {
   uid: string
   email: string

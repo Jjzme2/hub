@@ -12,7 +12,9 @@
       "mcp__claude_ai_Vercel__list_projects",
       "mcp__claude_ai_Vercel__get_project",
       "PowerShell(vercel --version 2>&1)",
-      "PowerShell(New-Item -ItemType Directory -Path \"C:\\\\Users\\\\Jjzet\\\\Projects\\\\Suite\\\\hub\\\\.vercel\" -Force)"
+      "PowerShell(New-Item -ItemType Directory -Path \"C:\\\\Users\\\\Jjzet\\\\Projects\\\\Suite\\\\hub\\\\.vercel\" -Force)",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\Jjzet\\\\Projects\\\\Suite\\\\hub\\\\app\" -Recurse | Select-Object FullName | ForEach-Object { $_.FullName.Replace\\(\"C:\\\\Users\\\\Jjzet\\\\Projects\\\\Suite\\\\hub\\\\\", \"\"\\) })",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\Jjzet\\\\Projects\\\\Suite\\\\hub\\\\server\" -Recurse | Select-Object FullName | ForEach-Object { $_.FullName.Replace\\(\"C:\\\\Users\\\\Jjzet\\\\Projects\\\\Suite\\\\hub\\\\\", \"\"\\) })"
     ]
   }
 }

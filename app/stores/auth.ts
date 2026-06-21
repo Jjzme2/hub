@@ -8,6 +8,8 @@ export const useAuthStore = defineStore('auth', () => {
   const auth = useFirebaseAuth()!
   const config = useRuntimeConfig()
 
+  const preferencesStore = usePreferencesStore()
+
   const isAdmin = ref(false)
   const isDisabled = ref(false)
   const isAdminLoading = ref(true)
@@ -42,6 +44,7 @@ export const useAuthStore = defineStore('auth', () => {
       isDisabled.value = false
     }
     isAdminLoading.value = false
+    await preferencesStore.load(uid)
   }
 
   watch(currentUser, async (user) => {
@@ -55,6 +58,7 @@ export const useAuthStore = defineStore('auth', () => {
       isAdmin.value = false
       isDisabled.value = false
       isAdminLoading.value = false
+      preferencesStore.reset()
     }
   }, { immediate: true })
 
