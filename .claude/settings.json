@@ -53,7 +53,8 @@
       "Bash(pnpm add *)",
       "Bash(node -e \"const p = require\\('c:/Users/Jjzet/Projects/Suite/hub/node_modules/.pnpm/jwks-rsa@3.1.0/node_modules/jwks-rsa/package.json'\\); console.log\\('jwks-rsa jose dep:', p.dependencies['jose']\\)\")",
       "Bash(node -e \"const p = require\\('c:/Users/Jjzet/Projects/Suite/hub/node_modules/.pnpm/jwks-rsa@4.1.0/node_modules/jwks-rsa/package.json'\\); console.log\\('jwks-rsa jose dep:', p.dependencies['jose']\\)\")",
-      "Bash(node -e \"const p = require\\('c:/Users/Jjzet/Projects/Suite/hub/node_modules/.pnpm/jose@6.2.3/node_modules/jose/package.json'\\); console.log\\('jose version:', p.version, 'type:', p.type\\); const m = p.exports && p.exports['.']; console.log\\('exports:', JSON.stringify\\(m, null, 2\\)\\)\")"
+      "Bash(node -e \"const p = require\\('c:/Users/Jjzet/Projects/Suite/hub/node_modules/.pnpm/jose@6.2.3/node_modules/jose/package.json'\\); console.log\\('jose version:', p.version, 'type:', p.type\\); const m = p.exports && p.exports['.']; console.log\\('exports:', JSON.stringify\\(m, null, 2\\)\\)\")",
+      "Bash(grep -A30 \"^    dependencies:$\" pnpm-lock.yaml)"
     ]
   }
 }
