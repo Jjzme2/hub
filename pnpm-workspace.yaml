@@ -1,5 +1,6 @@
 overrides:
   node-fetch: "^2.7.0"
+  "@vercel/nft": "^0.27.4"
 
 allowBuilds:
   '@firebase/util': true
