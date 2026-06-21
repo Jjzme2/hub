@@ -25,3 +25,6 @@ logs
 
 # Firebase
 firestore.rules
+
+# Vercel
+.vercel

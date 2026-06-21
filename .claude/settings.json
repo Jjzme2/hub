@@ -7,7 +7,12 @@
       "PowerShell(Set-Location \"c:\\\\Users\\\\Jjzet\\\\Projects\\\\Suite\\\\hub\"; pnpm run typecheck 2>&1; Write-Output \"Exit code: $LASTEXITCODE\")",
       "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\Jjzet\\\\Projects\\\\Suite\\\\hub\" -Force)",
       "Bash(Select-Object Name, PSIsContainer)",
-      "Bash(Format-Table -AutoSize)"
+      "Bash(Format-Table -AutoSize)",
+      "mcp__claude_ai_Vercel__list_teams",
+      "mcp__claude_ai_Vercel__list_projects",
+      "mcp__claude_ai_Vercel__get_project",
+      "PowerShell(vercel --version 2>&1)",
+      "PowerShell(New-Item -ItemType Directory -Path \"C:\\\\Users\\\\Jjzet\\\\Projects\\\\Suite\\\\hub\\\\.vercel\" -Force)"
     ]
   }
 }
