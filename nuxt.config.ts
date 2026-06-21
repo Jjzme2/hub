@@ -51,6 +51,12 @@ export default defineNuxtConfig({
 
   compatibilityDate: '2025-01-15',
 
+  nitro: {
+    externals: {
+      inline: ['firebase', '@firebase', 'idb']
+    }
+  },
+
   eslint: {
     config: {
       stylistic: {
