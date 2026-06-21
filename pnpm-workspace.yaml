@@ -4,6 +4,7 @@ overrides:
 allowBuilds:
   '@firebase/util': true
   '@parcel/watcher': true
+  '@sentry/cli': true
   '@tailwindcss/oxide': true
   esbuild: true
   protobufjs: true

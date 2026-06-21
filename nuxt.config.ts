@@ -23,8 +23,23 @@ export default defineNuxtConfig({
     '@nuxt/eslint',
     '@nuxt/ui',
     '@pinia/nuxt',
-    'nuxt-vuefire'
+    'nuxt-vuefire',
+    '@sentry/nuxt/module'
   ],
+
+  sentry: {
+    dsn: process.env.SENTRY_DSN,
+
+    sourceMapsUploadOptions: {
+      org: process.env.SENTRY_ORG,
+      project: process.env.SENTRY_PROJECT,
+      authToken: process.env.SENTRY_AUTH_TOKEN
+    },
+
+    org: 'ilytat',
+    project: 'javascript-nuxt',
+    autoInjectServerSentry: 'top-level-import'
+  },
 
   vuefire: {
     auth: {
@@ -46,9 +61,7 @@ export default defineNuxtConfig({
   },
 
   css: ['~/assets/css/main.css'],
-
   ssr: false,
-
   compatibilityDate: '2025-01-15',
 
   nitro: {
@@ -64,5 +77,9 @@ export default defineNuxtConfig({
         braceStyle: '1tbs'
       }
     }
+  },
+
+  sourcemap: {
+    client: 'hidden'
   }
 })
