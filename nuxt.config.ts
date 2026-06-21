@@ -66,7 +66,8 @@ export default defineNuxtConfig({
 
   nitro: {
     externals: {
-      inline: ['firebase', '@firebase', 'idb', 'firebase-admin', 'jwks-rsa', 'jose']
+      external: ['firebase-admin'],
+      inline: ['firebase', '@firebase', 'idb']
     }
   },
 
