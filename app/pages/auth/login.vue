@@ -10,7 +10,7 @@ const form = reactive({ email: '', password: '' })
 const loading = ref(false)
 const error = ref('')
 
-function getCallback() {
+function getCallback(): string | null {
   const raw = route.query.callback as string | undefined
   if (!raw) return null
   try {
@@ -20,47 +20,75 @@ function getCallback() {
   return null
 }
 
-function getRedirect() {
+function getRedirect(): string | null {
   const raw = route.query.redirect as string | undefined
   if (!raw) return null
   try {
     const url = new URL(raw)
     if (url.protocol === 'http:' || url.protocol === 'https:') return raw
-  } catch {}
+  } catch {
+    // relative path
+    if (raw.startsWith('/') && !raw.startsWith('//')) return raw
+  }
   return null
 }
 
 async function navigateAfterLogin() {
-  const callback = getCallback()
-  if (callback) {
-    const auth = useFirebaseAuth()!
-    const user = auth.currentUser
-    if (user) {
-      try {
-        const idToken = await user.getIdToken()
-        const params = new URLSearchParams({ callback })
-        const { token } = await $fetch<{ token: string }>(`/api/auth/cross-token?${params}`, {
-          headers: { Authorization: `Bearer ${idToken}` }
-        })
-        const redirect = route.query.redirect as string | undefined
-        const dest = new URL(callback)
-        dest.searchParams.set('token', token)
-        if (redirect) dest.searchParams.set('redirect', redirect)
-        window.location.href = dest.toString()
-        return
-      } catch (e) {
-        console.error('Cross-app token exchange failed', e)
+  const auth = useFirebaseAuth()!
+  const user = auth.currentUser
+  if (!user) return
+
+  let callback = getCallback()
+  const redirect = getRedirect()
+
+  // If no explicit callback but redirect is cross-origin, all suite apps expose /auth/callback
+  if (!callback && redirect) {
+    try {
+      const redirectUrl = new URL(redirect)
+      if (redirectUrl.origin !== window.location.origin) {
+        callback = `${redirectUrl.origin}/auth/callback`
       }
+    } catch {}
+  }
+
+  if (callback) {
+    try {
+      const idToken = await user.getIdToken()
+      const params = new URLSearchParams({ callback })
+      const { token } = await $fetch<{ token: string }>(`/api/auth/cross-token?${params}`, {
+        headers: { Authorization: `Bearer ${idToken}` }
+      })
+      const dest = new URL(callback)
+      dest.searchParams.set('token', token)
+      // Pass along the path portion of redirect so the target app lands on the right page
+      if (redirect) {
+        try {
+          dest.searchParams.set('redirect', new URL(redirect).pathname || '/')
+        } catch {
+          dest.searchParams.set('redirect', redirect)
+        }
+      }
+      window.location.href = dest.toString()
+      return
+    } catch (e) {
+      console.error('Cross-app token exchange failed', e)
     }
   }
 
-  const redirect = getRedirect()
   if (redirect) {
     window.location.href = redirect
   } else {
     router.push('/admin')
   }
 }
+
+onMounted(async () => {
+  const auth = useFirebaseAuth()!
+  // If already signed in, complete the SSO/redirect flow immediately
+  if (auth.currentUser) {
+    await navigateAfterLogin()
+  }
+})
 
 async function handleEmailLogin() {
   error.value = ''
