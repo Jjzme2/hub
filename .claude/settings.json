@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/Jjzet/Projects/Suite/**)",
+      "PowerShell(Get-Command pnpm -ErrorAction SilentlyContinue)",
+      "PowerShell(npm install -g pnpm@11.6.0 2>&1)",
+      "PowerShell(Set-Location \"c:\\\\Users\\\\Jjzet\\\\Projects\\\\Suite\\\\hub\"; pnpm run typecheck 2>&1; Write-Output \"Exit code: $LASTEXITCODE\")",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\Jjzet\\\\Projects\\\\Suite\\\\hub\" -Force)",
+      "Bash(Select-Object Name, PSIsContainer)",
+      "Bash(Format-Table -AutoSize)"
+    ]
+  }
+}
