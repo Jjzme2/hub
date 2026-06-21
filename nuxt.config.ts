@@ -9,6 +9,8 @@ export default defineNuxtConfig({
     r2SecretAccessKey: '',
     r2BucketName: '',
     r2Endpoint: '',
+    // Comma-separated origins allowed to request cross-app tokens (e.g. http://localhost:3001,https://pm.ilytat.com)
+    allowedAppOrigins: process.env.NUXT_ALLOWED_APP_ORIGINS || '',
     public: {
       // ADMIN_EMAILS has no NUXT_ prefix so it must be mapped explicitly
       adminEmails: process.env.ADMIN_EMAILS || '',

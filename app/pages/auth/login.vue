@@ -4,17 +4,70 @@ useSeoMeta({ title: 'Sign In — ILYTAT Suite' })
 
 const { loginWithEmail, loginWithGoogle } = useAuth()
 const router = useRouter()
+const route = useRoute()
 
 const form = reactive({ email: '', password: '' })
 const loading = ref(false)
 const error = ref('')
+
+function getCallback() {
+  const raw = route.query.callback as string | undefined
+  if (!raw) return null
+  try {
+    const url = new URL(raw)
+    if (url.protocol === 'http:' || url.protocol === 'https:') return raw
+  } catch {}
+  return null
+}
+
+function getRedirect() {
+  const raw = route.query.redirect as string | undefined
+  if (!raw) return null
+  try {
+    const url = new URL(raw)
+    if (url.protocol === 'http:' || url.protocol === 'https:') return raw
+  } catch {}
+  return null
+}
+
+async function navigateAfterLogin() {
+  const callback = getCallback()
+  if (callback) {
+    const auth = useFirebaseAuth()!
+    const user = auth.currentUser
+    if (user) {
+      try {
+        const idToken = await user.getIdToken()
+        const params = new URLSearchParams({ callback })
+        const { token } = await $fetch<{ token: string }>(`/api/auth/cross-token?${params}`, {
+          headers: { Authorization: `Bearer ${idToken}` }
+        })
+        const redirect = route.query.redirect as string | undefined
+        const dest = new URL(callback)
+        dest.searchParams.set('token', token)
+        if (redirect) dest.searchParams.set('redirect', redirect)
+        window.location.href = dest.toString()
+        return
+      } catch (e) {
+        console.error('Cross-app token exchange failed', e)
+      }
+    }
+  }
+
+  const redirect = getRedirect()
+  if (redirect) {
+    window.location.href = redirect
+  } else {
+    router.push('/admin')
+  }
+}
 
 async function handleEmailLogin() {
   error.value = ''
   loading.value = true
   try {
     await loginWithEmail(form.email, form.password)
-    await router.push('/admin')
+    await navigateAfterLogin()
   } catch (e: any) {
     error.value = friendlyError(e.code)
   } finally {
@@ -27,7 +80,7 @@ async function handleGoogleLogin() {
   loading.value = true
   try {
     await loginWithGoogle()
-    await router.push('/admin')
+    await navigateAfterLogin()
   } catch (e: any) {
     error.value = e.message || 'Google sign-in failed'
   } finally {

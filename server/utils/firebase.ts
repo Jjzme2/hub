@@ -4,9 +4,13 @@ import { getFirestore } from 'firebase-admin/firestore'
 
 function ensureInitialized() {
   if (getApps().length > 0) return
-  const raw = process.env.FIREBASE_SERVICE_ACCOUNT
-  if (!raw) throw new Error('FIREBASE_SERVICE_ACCOUNT env var is not set')
-  initializeApp({ credential: cert(JSON.parse(raw)) })
+  const projectId = process.env.FIREBASE_PROJECT_ID
+  const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL
+  const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n')
+  if (!projectId || !clientEmail || !privateKey) {
+    throw new Error('FIREBASE_PROJECT_ID, FIREBASE_ADMIN_CLIENT_EMAIL, and FIREBASE_ADMIN_PRIVATE_KEY must all be set')
+  }
+  initializeApp({ credential: cert({ projectId, clientEmail, privateKey }) })
 }
 
 export function adminAuth() {
