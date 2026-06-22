@@ -1,5 +1,4 @@
 import * as Sentry from '@sentry/nuxt'
-import { logInfo, logWarn, logError } from '~/server/utils/logger'
 
 export default defineEventHandler(async (event) => {
   const authHeader = getHeader(event, 'authorization')
