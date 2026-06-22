@@ -42,6 +42,7 @@ async function signOut() {
             color="neutral"
             variant="ghost"
           />
+          <NotificationBell />
           <UButton
             to="/profile"
             icon="i-lucide-user"
