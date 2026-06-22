@@ -1,32 +1,17 @@
-import * as Sentry from "@sentry/nuxt";
+import * as Sentry from '@sentry/nuxt'
 
 Sentry.init({
-  // If set up, you can use your runtime config here
-  // dsn: useRuntimeConfig().public.sentry.dsn,
-  dsn: "https://415b9cb774db23cee9eb2575a72cf5c6@o4511605235122176.ingest.us.sentry.io/4511605243576320",
+  dsn: import.meta.env.SENTRY_DSN || 'https://415b9cb774db23cee9eb2575a72cf5c6@o4511605235122176.ingest.us.sentry.io/4511605243576320',
+  environment: import.meta.env.PROD ? 'production' : 'development',
 
-  // We recommend adjusting this value in production, or using tracesSampler
-  // for finer control
-  tracesSampleRate: 1.0,
+  tracesSampleRate: import.meta.env.PROD ? 0.2 : 1.0,
 
-  // This sets the sample rate to be 10%. You may want this to be 100% while
-  // in development and sample at a lower rate in production
-  replaysSessionSampleRate: 0.1,
-  
-  // If the entire session is not sampled, use the below sample rate to sample
-  // sessions when an error occurs.
+  replaysSessionSampleRate: 0.05,
   replaysOnErrorSampleRate: 1.0,
-  
-  // If you don't want to use Session Replay, just remove the line below:
+
   integrations: [Sentry.replayIntegration()],
 
-  // Enable logs to be sent to Sentry
   enableLogs: true,
-
-  // Enable sending of user PII (Personally Identifiable Information)
-  // https://docs.sentry.io/platforms/javascript/guides/nuxt/configuration/options/#sendDefaultPii
   sendDefaultPii: true,
-
-  // Setting this option to true will print useful information to the console while you're setting up Sentry.
-  debug: false,
-});
+  debug: !import.meta.env.PROD,
+})

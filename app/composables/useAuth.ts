@@ -12,6 +12,7 @@ import {
   updateProfile
 } from 'firebase/auth'
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
+import * as Sentry from '@sentry/nuxt'
 
 export function useAuth() {
   const auth = useFirebaseAuth()!
@@ -35,12 +36,14 @@ export function useAuth() {
 
   async function loginWithEmail(email: string, password: string) {
     const cred = await signInWithEmailAndPassword(auth, email, password)
+    Sentry.setUser({ id: cred.user.uid, email: cred.user.email ?? undefined })
     return cred
   }
 
   async function loginWithGoogle() {
     const provider = new GoogleAuthProvider()
     const cred = await signInWithPopup(auth, provider)
+    Sentry.setUser({ id: cred.user.uid, email: cred.user.email ?? undefined, username: cred.user.displayName ?? undefined })
     await ensureUserDoc(cred.user.uid, cred.user.email, cred.user.displayName)
     return cred
   }
@@ -87,6 +90,7 @@ export function useAuth() {
 
     await Promise.all(writes)
     await store.loadUserDoc(cred.user.uid, email)
+    Sentry.setUser({ id: cred.user.uid, email })
     return cred
   }
 
@@ -99,7 +103,6 @@ export function useAuth() {
     await updateDoc(doc(db, 'users', uid), { ...data, updatedAt: serverTimestamp() })
   }
 
-  // Requires re-authentication first; sends a verification link to the new address
   async function changeEmail(currentPassword: string, newEmail: string) {
     const user = auth.currentUser
     if (!user || !user.email) throw new Error('Not signed in')
@@ -128,6 +131,7 @@ export function useAuth() {
 
   async function logout() {
     await signOut(auth)
+    Sentry.setUser(null)
   }
 
   return {

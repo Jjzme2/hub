@@ -1,10 +1,15 @@
 <script setup lang="ts">
+import * as Sentry from '@sentry/nuxt'
+
 definePageMeta({ ssr: false })
 useSeoMeta({ title: 'Sign In — ILYTAT Suite' })
 
 const { loginWithEmail, loginWithGoogle } = useAuth()
 const router = useRouter()
 const route = useRoute()
+
+// Must be called at top level — not inside functions or lifecycle hooks
+const auth = useFirebaseAuth()!
 
 const form = reactive({ email: '', password: '' })
 const loading = ref(false)
@@ -27,21 +32,19 @@ function getRedirect(): string | null {
     const url = new URL(raw)
     if (url.protocol === 'http:' || url.protocol === 'https:') return raw
   } catch {
-    // relative path
     if (raw.startsWith('/') && !raw.startsWith('//')) return raw
   }
   return null
 }
 
 async function navigateAfterLogin() {
-  const auth = useFirebaseAuth()!
   const user = auth.currentUser
   if (!user) return
 
   let callback = getCallback()
   const redirect = getRedirect()
 
-  // If no explicit callback but redirect is cross-origin, all suite apps expose /auth/callback
+  // If no explicit callback but redirect is cross-origin, derive /auth/callback
   if (!callback && redirect) {
     try {
       const redirectUrl = new URL(redirect)
@@ -52,6 +55,7 @@ async function navigateAfterLogin() {
   }
 
   if (callback) {
+    Sentry.addBreadcrumb({ category: 'auth', message: 'Starting cross-app SSO token exchange', data: { callback }, level: 'info' })
     try {
       const idToken = await user.getIdToken()
       const params = new URLSearchParams({ callback })
@@ -60,7 +64,6 @@ async function navigateAfterLogin() {
       })
       const dest = new URL(callback)
       dest.searchParams.set('token', token)
-      // Pass along the path portion of redirect so the target app lands on the right page
       if (redirect) {
         try {
           dest.searchParams.set('redirect', new URL(redirect).pathname || '/')
@@ -68,9 +71,11 @@ async function navigateAfterLogin() {
           dest.searchParams.set('redirect', redirect)
         }
       }
+      Sentry.addBreadcrumb({ category: 'auth', message: 'SSO token exchange succeeded, redirecting', data: { dest: dest.origin }, level: 'info' })
       window.location.href = dest.toString()
       return
     } catch (e) {
+      Sentry.captureException(e, { extra: { callback, uid: user.uid, flow: 'cross-app-sso' } })
       console.error('Cross-app token exchange failed', e)
     }
   }
@@ -83,9 +88,9 @@ async function navigateAfterLogin() {
 }
 
 onMounted(async () => {
-  const auth = useFirebaseAuth()!
   await auth.authStateReady()
   if (auth.currentUser) {
+    Sentry.addBreadcrumb({ category: 'auth', message: 'User already signed in on mount, proceeding', level: 'info' })
     await navigateAfterLogin()
   }
 })
@@ -95,8 +100,10 @@ async function handleEmailLogin() {
   loading.value = true
   try {
     await loginWithEmail(form.email, form.password)
+    Sentry.addBreadcrumb({ category: 'auth', message: 'Email login succeeded', level: 'info' })
     await navigateAfterLogin()
   } catch (e: any) {
+    Sentry.captureException(e, { extra: { flow: 'email-login', code: e.code } })
     error.value = friendlyError(e.code)
   } finally {
     loading.value = false
@@ -108,8 +115,12 @@ async function handleGoogleLogin() {
   loading.value = true
   try {
     await loginWithGoogle()
+    Sentry.addBreadcrumb({ category: 'auth', message: 'Google login succeeded', level: 'info' })
     await navigateAfterLogin()
   } catch (e: any) {
+    if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') {
+      Sentry.captureException(e, { extra: { flow: 'google-login', code: e.code } })
+    }
     error.value = e.message || 'Google sign-in failed'
   } finally {
     loading.value = false
