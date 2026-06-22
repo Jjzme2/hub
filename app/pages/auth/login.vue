@@ -84,7 +84,7 @@ async function navigateAfterLogin() {
 
 onMounted(async () => {
   const auth = useFirebaseAuth()!
-  // If already signed in, complete the SSO/redirect flow immediately
+  await auth.authStateReady()
   if (auth.currentUser) {
     await navigateAfterLogin()
   }
