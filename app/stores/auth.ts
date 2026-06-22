@@ -22,29 +22,32 @@ export const useAuthStore = defineStore('auth', () => {
   )
 
   async function loadUserDoc(uid: string, email?: string | null) {
-    const snap = await getDoc(doc(db, 'users', uid))
-    if (snap.exists()) {
-      const data = snap.data()
-      isAdmin.value = data.isAdmin ?? false
-      isDisabled.value = data.isDisabled ?? false
-      if (isDisabled.value) {
-        await signOut(auth)
+    try {
+      const snap = await getDoc(doc(db, 'users', uid))
+      if (snap.exists()) {
+        const data = snap.data()
+        isAdmin.value = data.isAdmin ?? false
+        isDisabled.value = data.isDisabled ?? false
+        if (isDisabled.value) {
+          await signOut(auth)
+        }
+      } else {
+        const isAdminUser = adminEmails.value.includes(email?.toLowerCase() ?? '')
+        await setDoc(doc(db, 'users', uid), {
+          email,
+          displayName: currentUser.value?.displayName ?? '',
+          username: '',
+          birthday: '',
+          isAdmin: isAdminUser,
+          createdAt: serverTimestamp()
+        })
+        isAdmin.value = isAdminUser
+        isDisabled.value = false
       }
-    } else {
-      const isAdminUser = adminEmails.value.includes(email?.toLowerCase() ?? '')
-      await setDoc(doc(db, 'users', uid), {
-        email,
-        displayName: currentUser.value?.displayName ?? '',
-        username: '',
-        birthday: '',
-        isAdmin: isAdminUser,
-        createdAt: serverTimestamp()
-      })
-      isAdmin.value = isAdminUser
-      isDisabled.value = false
+      await preferencesStore.load(uid)
+    } finally {
+      isAdminLoading.value = false
     }
-    isAdminLoading.value = false
-    await preferencesStore.load(uid)
   }
 
   watch(currentUser, async (user) => {

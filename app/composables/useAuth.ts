@@ -35,7 +35,6 @@ export function useAuth() {
 
   async function loginWithEmail(email: string, password: string) {
     const cred = await signInWithEmailAndPassword(auth, email, password)
-    await store.loadUserDoc(cred.user.uid, cred.user.email)
     return cred
   }
 
