@@ -15,7 +15,7 @@ import {
 import type { SuiteApp, UserProfile } from '~/types/suite'
 
 definePageMeta({ ssr: false, middleware: 'admin' })
-useSeoMeta({ title: 'Admin — ILYTAT Suite' })
+useSeoMeta({ title: 'Admin' })
 
 const db = useFirestore()
 const { logout } = useAuth()

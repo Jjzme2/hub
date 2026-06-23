@@ -2,7 +2,7 @@
 import * as Sentry from '@sentry/nuxt'
 
 definePageMeta({ ssr: false })
-useSeoMeta({ title: 'Sign In — ILYTAT Suite' })
+useSeoMeta({ title: 'Sign In', robots: 'noindex' })
 
 const { loginWithEmail, loginWithGoogle } = useAuth()
 const router = useRouter()

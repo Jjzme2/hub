@@ -1,6 +1,6 @@
 <script setup lang="ts">
 definePageMeta({ ssr: false })
-useSeoMeta({ title: 'Create Account — ILYTAT Suite' })
+useSeoMeta({ title: 'Create Account', robots: 'noindex' })
 
 const route = useRoute()
 const router = useRouter()

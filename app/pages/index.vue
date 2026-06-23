@@ -2,7 +2,7 @@
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore'
 import type { SuiteApp } from '~/types/suite'
 
-useSeoMeta({ title: 'ILYTAT Suite' })
+useSeoMeta({ title: 'Home' })
 
 const db = useFirestore()
 const apps = ref<SuiteApp[]>([])

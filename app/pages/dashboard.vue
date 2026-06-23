@@ -3,7 +3,7 @@ import { collection, query, orderBy, limit, where, Timestamp } from 'firebase/fi
 import { useCollection } from 'vuefire'
 import type { ActivityEvent } from '~/types/suite'
 
-useSeoMeta({ title: 'Dashboard — ILYTAT Suite' })
+useSeoMeta({ title: 'Dashboard' })
 
 const db = useFirestore()
 const user = useCurrentUser()

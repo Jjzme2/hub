@@ -2,7 +2,7 @@
 import { doc, getDoc } from 'firebase/firestore'
 
 definePageMeta({ ssr: false, middleware: 'auth' })
-useSeoMeta({ title: 'Profile — ILYTAT Suite' })
+useSeoMeta({ title: 'Profile' })
 
 const db = useFirestore()
 const store = useAuthStore()

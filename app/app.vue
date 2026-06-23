@@ -10,8 +10,13 @@ useHead({
 })
 
 useSeoMeta({
+  titleTemplate: '%s — ILYTAT Suite',
   title: 'ILYTAT Suite',
-  description: 'Your personal productivity suite — all your apps in one place.'
+  description: 'Your personal productivity suite — all your apps in one place.',
+  ogTitle: 'ILYTAT Suite',
+  ogDescription: 'Your personal productivity suite — all your apps in one place.',
+  ogType: 'website',
+  twitterCard: 'summary'
 })
 
 async function signOut() {

@@ -3,8 +3,9 @@ This is just a very simple page with a button to throw an example error.
 Feel free to delete this file.
 -->
 
-<script setup>
-  import * as Sentry from '@sentry/nuxt';
+<script setup lang="ts">
+  import * as Sentry from '@sentry/nuxt'
+  useSeoMeta({ title: 'Sentry Example', robots: 'noindex' })
 
   class SentryExampleFrontendError extends Error {
     constructor(message) {
