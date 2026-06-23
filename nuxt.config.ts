@@ -22,6 +22,7 @@ export default defineNuxtConfig({
   modules: [
     '@nuxt/eslint',
     '@nuxt/ui',
+    '@vueuse/nuxt',
     '@pinia/nuxt',
     'nuxt-vuefire',
     '@sentry/nuxt/module'
@@ -65,6 +66,7 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-01-15',
 
   nitro: {
+    preset: 'vercel',
     externals: {
       external: ['firebase-admin'],
       inline: ['firebase', '@firebase', 'idb']
