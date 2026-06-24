@@ -1,4 +1,4 @@
-import { authenticator } from 'otplib'
+import { verifySync } from 'otplib'
 
 export default defineEventHandler(async (event) => {
   const uid = await verifyRequest(event)
@@ -11,8 +11,8 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: '2FA not configured' })
   }
 
-  const isValid = authenticator.verify({ token: code.replace(/\s/g, ''), secret: totp.secret })
-  if (!isValid) {
+  const { valid } = verifySync({ secret: totp.secret, token: code.replace(/\s/g, ''), type: 'totp' })
+  if (!valid) {
     throw createError({ statusCode: 400, statusMessage: 'Invalid verification code' })
   }
 

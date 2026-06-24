@@ -1,12 +1,12 @@
-import { authenticator } from 'otplib'
+import { generateSecret, generateURI } from 'otplib'
 
 export default defineEventHandler(async (event) => {
   const uid = await verifyRequest(event)
   const snap = await adminDb().doc(`users/${uid}`).get()
   const email = snap.data()?.email ?? uid
 
-  const secret = authenticator.generateSecret()
-  const otpauthUri = authenticator.keyuri(email, 'ILYTAT Suite', secret)
+  const secret = generateSecret()
+  const otpauthUri = generateURI({ strategy: 'totp', issuer: 'ILYTAT Suite', label: email, secret })
 
   return { secret, otpauthUri }
 })

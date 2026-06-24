@@ -1,4 +1,4 @@
-import { authenticator } from 'otplib'
+import { verifySync } from 'otplib'
 
 export default defineEventHandler(async (event) => {
   const uid = await verifyRequest(event)
@@ -8,8 +8,8 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'secret and code are required' })
   }
 
-  const isValid = authenticator.verify({ token: code.replace(/\s/g, ''), secret })
-  if (!isValid) {
+  const { valid } = verifySync({ secret, token: code.replace(/\s/g, ''), type: 'totp' })
+  if (!valid) {
     throw createError({ statusCode: 400, statusMessage: 'Invalid verification code' })
   }
 
