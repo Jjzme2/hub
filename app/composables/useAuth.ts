@@ -11,6 +11,7 @@ import {
   EmailAuthProvider,
   updateProfile
 } from 'firebase/auth'
+import { doc, getDoc } from 'firebase/firestore'
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import * as Sentry from '@sentry/nuxt'
 
@@ -134,6 +135,41 @@ export function useAuth() {
     Sentry.setUser(null)
   }
 
+  // ── Custom TOTP 2FA ───────────────────────────────────────────────────────
+
+  async function isTotpEnabled(): Promise<boolean> {
+    const user = auth.currentUser
+    if (!user) return false
+    const snap = await getDoc(doc(db, 'users', user.uid))
+    return snap.exists() && snap.data()?.totp?.enabled === true
+  }
+
+  async function authedFetch<T>(path: string, options: Parameters<typeof $fetch>[1] = {}): Promise<T> {
+    const user = auth.currentUser
+    if (!user) throw new Error('Not signed in')
+    const idToken = await user.getIdToken()
+    return $fetch<T>(path, {
+      ...options,
+      headers: { Authorization: `Bearer ${idToken}`, ...options.headers }
+    })
+  }
+
+  async function setupTotp(): Promise<{ secret: string; otpauthUri: string }> {
+    return authedFetch('/api/auth/totp/setup', { method: 'POST' })
+  }
+
+  async function enrollTotp(secret: string, code: string): Promise<void> {
+    await authedFetch('/api/auth/totp/enroll', { method: 'POST', body: { secret, code } })
+  }
+
+  async function verifyTotpCode(code: string): Promise<void> {
+    await authedFetch('/api/auth/totp/verify', { method: 'POST', body: { code } })
+  }
+
+  async function disableTotp(): Promise<void> {
+    await authedFetch('/api/auth/totp', { method: 'DELETE' })
+  }
+
   return {
     loginWithEmail,
     loginWithGoogle,
@@ -143,6 +179,11 @@ export function useAuth() {
     changePassword,
     resendVerificationEmail,
     reloadUser,
-    logout
+    logout,
+    isTotpEnabled,
+    setupTotp,
+    enrollTotp,
+    verifyTotpCode,
+    disableTotp
   }
 }

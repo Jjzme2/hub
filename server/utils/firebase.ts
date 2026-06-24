@@ -1,6 +1,7 @@
 import { cert, getApps, initializeApp } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
 import { getFirestore } from 'firebase-admin/firestore'
+import type { H3Event } from 'h3'
 
 function ensureInitialized() {
   if (getApps().length > 0) return
@@ -21,4 +22,18 @@ export function adminAuth() {
 export function adminDb() {
   ensureInitialized()
   return getFirestore()
+}
+
+/** Verify the Bearer token in the request and return the Firebase uid. */
+export async function verifyRequest(event: H3Event): Promise<string> {
+  const header = getHeader(event, 'authorization')
+  if (!header?.startsWith('Bearer ')) {
+    throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
+  }
+  try {
+    const decoded = await adminAuth().verifyIdToken(header.slice(7))
+    return decoded.uid
+  } catch {
+    throw createError({ statusCode: 401, statusMessage: 'Invalid token' })
+  }
 }

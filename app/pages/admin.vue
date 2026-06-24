@@ -3,6 +3,7 @@ import {
   collection,
   query,
   orderBy,
+  limit,
   onSnapshot,
   addDoc,
   updateDoc,
@@ -13,6 +14,7 @@ import {
   serverTimestamp
 } from 'firebase/firestore'
 import type { SuiteApp, UserProfile } from '~/types/suite'
+import dayjs from 'dayjs'
 
 definePageMeta({ ssr: false, middleware: 'admin' })
 useSeoMeta({ title: 'Admin' })
@@ -24,7 +26,8 @@ const router = useRouter()
 const tabs = [
   { label: 'Apps', icon: 'i-lucide-layout-grid', slot: 'apps' },
   { label: 'Invites', icon: 'i-lucide-mail-plus', slot: 'invites' },
-  { label: 'Users', icon: 'i-lucide-users', slot: 'users' }
+  { label: 'Users', icon: 'i-lucide-users', slot: 'users' },
+  { label: 'Logs', icon: 'i-lucide-scroll-text', slot: 'logs' }
 ]
 
 async function signOut() {
@@ -247,6 +250,50 @@ async function deleteUser(uid: string) {
 }
 
 onMounted(loadUsers)
+
+// ── Logs ──────────────────────────────────────────────────────────────────────
+
+interface HubLog {
+  id: string
+  level: 'info' | 'warn' | 'error'
+  message: string
+  context?: Record<string, unknown>
+  errorMessage?: string
+  errorStack?: string
+  createdAt: any
+}
+
+const logs = ref<HubLog[]>([])
+const logsLoading = ref(true)
+const logLevelFilter = ref<'all' | 'info' | 'warn' | 'error'>('all')
+const expandedLogId = ref<string | null>(null)
+
+const levelColors = { all: 'neutral', info: 'sky', warn: 'amber', error: 'red' } as const
+
+const filteredLogs = computed(() =>
+  logLevelFilter.value === 'all'
+    ? logs.value
+    : logs.value.filter(l => l.level === logLevelFilter.value)
+)
+
+function formatLogTime(ts: any): string {
+  if (!ts) return '—'
+  const d = ts.toDate ? ts.toDate() : new Date(ts)
+  return dayjs(d).format('MMM D, HH:mm:ss')
+}
+
+onMounted(() => {
+  const q = query(collection(db, 'hub_logs'), orderBy('createdAt', 'desc'), limit(200))
+  const unsub = onSnapshot(
+    q,
+    snap => {
+      logs.value = snap.docs.map(d => ({ id: d.id, ...d.data() } as HubLog))
+      logsLoading.value = false
+    },
+    () => { logsLoading.value = false }
+  )
+  onUnmounted(unsub)
+})
 </script>
 
 <template>
@@ -457,6 +504,90 @@ onMounted(loadUsers)
           </div>
         </div>
       </template>
+      <!-- ── Logs ────────────────────────────────────────────────────────── -->
+      <template #logs>
+        <div class="pt-4 space-y-3">
+
+          <!-- Filter bar -->
+          <div class="flex items-center gap-2 flex-wrap">
+            <div class="flex gap-1">
+              <UButton
+                v-for="lvl in (['all', 'info', 'warn', 'error'] as const)"
+                :key="lvl"
+                :label="lvl === 'all' ? 'All' : lvl.charAt(0).toUpperCase() + lvl.slice(1)"
+                size="xs"
+                :variant="logLevelFilter === lvl ? 'solid' : 'ghost'"
+                :color="levelColors[lvl]"
+                @click="logLevelFilter = lvl"
+              />
+            </div>
+            <span class="text-xs text-muted ml-auto">
+              {{ filteredLogs.length }}{{ logLevelFilter !== 'all' ? ` of ${logs.length}` : '' }} entries
+            </span>
+          </div>
+
+          <!-- Loading skeletons -->
+          <div v-if="logsLoading" class="space-y-2">
+            <USkeleton v-for="i in 5" :key="i" class="h-10 rounded-xl" />
+          </div>
+
+          <!-- Empty state -->
+          <div v-else-if="!filteredLogs.length" class="flex flex-col items-center justify-center py-20 gap-3 text-muted">
+            <UIcon name="i-lucide-scroll-text" class="size-10 opacity-25" />
+            <p class="text-sm">No logs found.</p>
+          </div>
+
+          <!-- Log entries -->
+          <div v-else class="space-y-1">
+            <div
+              v-for="log in filteredLogs"
+              :key="log.id"
+              class="rounded-xl ring ring-default bg-elevated overflow-hidden"
+            >
+              <button
+                type="button"
+                class="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-muted/40 transition-colors"
+                @click="expandedLogId = expandedLogId === log.id ? null : log.id"
+              >
+                <UBadge
+                  :label="log.level.toUpperCase()"
+                  :color="levelColors[log.level]"
+                  variant="subtle"
+                  size="xs"
+                  class="shrink-0 font-mono w-12 justify-center"
+                />
+                <span class="text-xs text-muted shrink-0 font-mono tabular-nums">
+                  {{ formatLogTime(log.createdAt) }}
+                </span>
+                <span class="text-sm flex-1 truncate">{{ log.message }}</span>
+                <UIcon
+                  :name="expandedLogId === log.id ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+                  class="size-3.5 text-muted shrink-0"
+                />
+              </button>
+
+              <div v-if="expandedLogId === log.id" class="px-4 pt-2 pb-3 space-y-2 border-t border-default">
+                <pre
+                  v-if="log.context"
+                  class="text-xs font-mono bg-muted/30 rounded-lg p-3 overflow-auto max-h-48 whitespace-pre-wrap"
+                >{{ JSON.stringify(log.context, null, 2) }}</pre>
+                <div v-if="log.errorMessage" class="space-y-1">
+                  <p class="text-xs font-semibold text-red-500 dark:text-red-400">{{ log.errorMessage }}</p>
+                  <pre
+                    v-if="log.errorStack"
+                    class="text-xs font-mono text-muted bg-muted/30 rounded-lg p-3 overflow-auto max-h-48 whitespace-pre-wrap"
+                  >{{ log.errorStack }}</pre>
+                </div>
+                <p v-if="!log.context && !log.errorMessage" class="text-xs text-muted italic">
+                  No additional context.
+                </p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </template>
+
     </UTabs>
 
     <!-- ── App modal ─────────────────────────────────────────────────────── -->

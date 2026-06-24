@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { doc, getDoc } from 'firebase/firestore'
+import QRCode from 'qrcode'
 
 definePageMeta({ ssr: false, middleware: 'auth' })
 useSeoMeta({ title: 'Profile' })
 
 const db = useFirestore()
 const store = useAuthStore()
-const { updateUserProfile, changeEmail, changePassword, resendVerificationEmail, reloadUser } = useAuth()
+const { updateUserProfile, changeEmail, changePassword, resendVerificationEmail, reloadUser, isTotpEnabled, setupTotp, enrollTotp, disableTotp } = useAuth()
 const notify = useNotification()
 
 const user = computed(() => store.currentUser)
@@ -150,7 +151,72 @@ function friendlyAuthError(code: string) {
   return map[code] || ''
 }
 
-onMounted(loadProfile)
+// ── 2FA ───────────────────────────────────────────────────────────────────────
+
+const totpEnabled = ref(false)
+const enrolling = ref(false)
+const enrollLoading = ref(false)
+const disableLoading = ref(false)
+const pendingSecret = ref('')
+const qrDataUrl = ref('')
+const enrollCode = ref('')
+const enrollError = ref('')
+
+async function refreshTotpStatus() {
+  totpEnabled.value = await isTotpEnabled()
+}
+
+async function handleStartEnrollment() {
+  enrollLoading.value = true
+  enrollError.value = ''
+  try {
+    const { secret, otpauthUri } = await setupTotp()
+    pendingSecret.value = secret
+    qrDataUrl.value = await QRCode.toDataURL(otpauthUri, { width: 200, margin: 1 })
+    enrolling.value = true
+  } catch (e: any) {
+    notify.error('Could not start 2FA setup', { error: e })
+  } finally {
+    enrollLoading.value = false
+  }
+}
+
+async function handleFinalizeEnrollment() {
+  if (!pendingSecret.value) return
+  enrollLoading.value = true
+  enrollError.value = ''
+  try {
+    await enrollTotp(pendingSecret.value, enrollCode.value)
+    notify.success('Two-factor authentication enabled')
+    enrolling.value = false
+    pendingSecret.value = ''
+    qrDataUrl.value = ''
+    enrollCode.value = ''
+    await refreshTotpStatus()
+  } catch {
+    enrollError.value = 'Invalid code — check your authenticator app and try again.'
+  } finally {
+    enrollLoading.value = false
+  }
+}
+
+async function handleDisable2FA() {
+  disableLoading.value = true
+  try {
+    await disableTotp()
+    notify.success('Two-factor authentication disabled')
+    await refreshTotpStatus()
+  } catch (e: any) {
+    notify.error('Could not disable 2FA', { error: e })
+  } finally {
+    disableLoading.value = false
+  }
+}
+
+onMounted(() => {
+  loadProfile()
+  refreshTotpStatus()
+})
 </script>
 
 <template>
@@ -286,6 +352,92 @@ onMounted(loadProfile)
           @click="handleChangePassword"
         />
       </div>
+    </div>
+
+    <!-- Two-Factor Authentication -->
+    <div class="p-6 rounded-2xl ring ring-default bg-elevated space-y-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="font-semibold">Two-Factor Authentication</h2>
+          <p class="text-xs text-muted mt-0.5">Protect your account with an authenticator app (TOTP).</p>
+        </div>
+        <UBadge
+          v-if="totpEnabled"
+          label="Enabled"
+          color="success"
+          variant="subtle"
+          icon="i-lucide-shield-check"
+        />
+        <UBadge
+          v-else
+          label="Disabled"
+          color="neutral"
+          variant="subtle"
+        />
+      </div>
+
+      <!-- Enabled state -->
+      <template v-if="totpEnabled && !enrolling">
+        <p class="text-sm text-muted">Your account is protected with a TOTP authenticator app.</p>
+        <UButton
+          label="Disable 2FA"
+          color="error"
+          variant="subtle"
+          icon="i-lucide-shield-off"
+          :loading="disableLoading"
+          @click="handleDisable2FA"
+        />
+      </template>
+
+      <!-- Enrollment: scan QR -->
+      <template v-else-if="enrolling">
+        <p class="text-sm text-muted">
+          Scan this QR code with your authenticator app (Google Authenticator, Authy, 1Password, etc.), then enter the 6-digit code to confirm.
+        </p>
+        <div class="flex justify-center">
+          <img :src="qrDataUrl" alt="2FA QR code" class="rounded-lg size-48 dark:invert" />
+        </div>
+
+        <UAlert v-if="enrollError" color="error" variant="subtle" :description="enrollError" />
+
+        <UFormField label="Verification Code">
+          <UInput
+            v-model="enrollCode"
+            type="text"
+            inputmode="numeric"
+            placeholder="000 000"
+            autocomplete="one-time-code"
+            class="font-mono tracking-widest text-center"
+            @keyup.enter="handleFinalizeEnrollment"
+          />
+        </UFormField>
+
+        <div class="flex gap-2">
+          <UButton
+            label="Confirm & Enable"
+            :loading="enrollLoading"
+            :disabled="enrollCode.replace(/\s/g, '').length < 6"
+            @click="handleFinalizeEnrollment"
+          />
+          <UButton
+            label="Cancel"
+            color="neutral"
+            variant="ghost"
+            @click="enrolling = false; totpSecret = null; qrDataUrl = ''; enrollCode = ''; enrollError = ''"
+          />
+        </div>
+      </template>
+
+      <!-- Disabled state -->
+      <template v-else>
+        <p class="text-sm text-muted">Add an extra layer of security — you'll be asked for a code from your authenticator app on every sign-in.</p>
+        <UButton
+          label="Set up 2FA"
+          icon="i-lucide-shield-plus"
+          :loading="enrollLoading"
+          @click="handleStartEnrollment"
+        />
+      </template>
     </div>
 
     <!-- Notification preferences -->

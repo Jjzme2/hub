@@ -4,7 +4,7 @@ import * as Sentry from '@sentry/nuxt'
 definePageMeta({ ssr: false })
 useSeoMeta({ title: 'Sign In', robots: 'noindex' })
 
-const { loginWithEmail, loginWithGoogle } = useAuth()
+const { loginWithEmail, loginWithGoogle, isTotpEnabled, verifyTotpCode } = useAuth()
 const router = useRouter()
 const route = useRoute()
 
@@ -14,6 +14,10 @@ const auth = useFirebaseAuth()!
 const form = reactive({ email: '', password: '' })
 const loading = ref(false)
 const error = ref('')
+
+// 2FA step
+const totpStep = ref(false)
+const totpCode = ref('')
 
 function getCallback(): string | null {
   const raw = route.query.callback as string | undefined
@@ -95,16 +99,38 @@ onMounted(async () => {
   }
 })
 
+async function maybeRequireTotp() {
+  if (await isTotpEnabled()) {
+    totpStep.value = true
+    return
+  }
+  await navigateAfterLogin()
+}
+
 async function handleEmailLogin() {
   error.value = ''
   loading.value = true
   try {
     await loginWithEmail(form.email, form.password)
     Sentry.addBreadcrumb({ category: 'auth', message: 'Email login succeeded', level: 'info' })
-    await navigateAfterLogin()
+    await maybeRequireTotp()
   } catch (e: any) {
     Sentry.captureException(e, { extra: { flow: 'email-login', code: e.code } })
     error.value = friendlyError(e.code)
+  } finally {
+    loading.value = false
+  }
+}
+
+async function handleTotpVerify() {
+  error.value = ''
+  loading.value = true
+  try {
+    await verifyTotpCode(totpCode.value)
+    Sentry.addBreadcrumb({ category: 'auth', message: 'TOTP verified', level: 'info' })
+    await navigateAfterLogin()
+  } catch {
+    error.value = 'Invalid code — check your authenticator app and try again.'
   } finally {
     loading.value = false
   }
@@ -116,12 +142,12 @@ async function handleGoogleLogin() {
   try {
     await loginWithGoogle()
     Sentry.addBreadcrumb({ category: 'auth', message: 'Google login succeeded', level: 'info' })
-    await navigateAfterLogin()
+    await maybeRequireTotp()
   } catch (e: any) {
     if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') {
       Sentry.captureException(e, { extra: { flow: 'google-login', code: e.code } })
+      error.value = e.message || 'Google sign-in failed'
     }
-    error.value = e.message || 'Google sign-in failed'
   } finally {
     loading.value = false
   }
@@ -141,67 +167,115 @@ function friendlyError(code: string) {
 
 <template>
   <UContainer class="py-24 max-w-sm mx-auto">
-    <div class="flex flex-col items-center gap-4 text-center mb-8">
-      <div class="p-4 rounded-2xl bg-elevated ring ring-default">
-        <UIcon name="i-lucide-lock" class="size-8 text-primary" />
+    <!-- MFA Step -->
+    <template v-if="totpStep">
+      <div class="flex flex-col items-center gap-4 text-center mb-8">
+        <div class="p-4 rounded-2xl bg-elevated ring ring-default">
+          <UIcon name="i-lucide-shield-check" class="size-8 text-primary" />
+        </div>
+        <div>
+          <h1 class="text-2xl font-bold">Two-Factor Auth</h1>
+          <p class="text-muted mt-1 text-sm">Enter the 6-digit code from your authenticator app.</p>
+        </div>
       </div>
-      <div>
-        <h1 class="text-2xl font-bold">Sign In</h1>
-        <p class="text-muted mt-1 text-sm">Access the ILYTAT Suite admin panel.</p>
-      </div>
-    </div>
 
-    <div class="space-y-4">
-      <UAlert v-if="error" color="error" variant="subtle" :description="error" />
+      <div class="space-y-4">
+        <UAlert v-if="error" color="error" variant="subtle" :description="error" />
 
-      <UFormField label="Email">
-        <UInput
-          v-model="form.email"
-          type="email"
-          placeholder="you@example.com"
-          autocomplete="email"
-          @keyup.enter="handleEmailLogin"
+        <UFormField label="Authenticator Code">
+          <UInput
+            v-model="totpCode"
+            type="text"
+            inputmode="numeric"
+            placeholder="000 000"
+            autocomplete="one-time-code"
+            class="text-center tracking-widest font-mono text-lg"
+            @keyup.enter="handleTotpVerify"
+          />
+        </UFormField>
+
+        <UButton
+          label="Verify"
+          block
+          :loading="loading"
+          :disabled="totpCode.replace(/\s/g, '').length < 6"
+          @click="handleTotpVerify"
         />
-      </UFormField>
 
-      <UFormField label="Password">
-        <UInput
-          v-model="form.password"
-          type="password"
-          placeholder="••••••••"
-          autocomplete="current-password"
-          @keyup.enter="handleEmailLogin"
+        <UButton
+          label="Back to sign in"
+          color="neutral"
+          variant="ghost"
+          block
+          @click="totpStep = false; totpCode = ''; error = ''"
         />
-      </UFormField>
+      </div>
+    </template>
 
-      <UButton
-        label="Sign In"
-        block
-        :loading="loading"
-        :disabled="!form.email || !form.password"
-        @click="handleEmailLogin"
-      />
-
-      <div class="relative flex items-center gap-3 py-1">
-        <div class="flex-1 border-t border-default" />
-        <span class="text-xs text-muted">or</span>
-        <div class="flex-1 border-t border-default" />
+    <!-- Normal Sign-In -->
+    <template v-else>
+      <div class="flex flex-col items-center gap-4 text-center mb-8">
+        <div class="p-4 rounded-2xl bg-elevated ring ring-default">
+          <UIcon name="i-lucide-lock" class="size-8 text-primary" />
+        </div>
+        <div>
+          <h1 class="text-2xl font-bold">Sign In</h1>
+          <p class="text-muted mt-1 text-sm">Access the ILYTAT Suite admin panel.</p>
+        </div>
       </div>
 
-      <UButton
-        icon="i-simple-icons-google"
-        label="Continue with Google"
-        color="neutral"
-        variant="outline"
-        block
-        :loading="loading"
-        @click="handleGoogleLogin"
-      />
+      <div class="space-y-4">
+        <UAlert v-if="error" color="error" variant="subtle" :description="error" />
 
-      <p class="text-center text-xs text-muted pt-2">
-        Have an invite?
-        <NuxtLink to="/auth/register" class="text-primary hover:underline">Create an account</NuxtLink>
-      </p>
-    </div>
+        <UFormField label="Email">
+          <UInput
+            v-model="form.email"
+            type="email"
+            placeholder="you@example.com"
+            autocomplete="email"
+            @keyup.enter="handleEmailLogin"
+          />
+        </UFormField>
+
+        <UFormField label="Password">
+          <UInput
+            v-model="form.password"
+            type="password"
+            placeholder="••••••••"
+            autocomplete="current-password"
+            @keyup.enter="handleEmailLogin"
+          />
+        </UFormField>
+
+        <UButton
+          label="Sign In"
+          block
+          :loading="loading"
+          :disabled="!form.email || !form.password"
+          @click="handleEmailLogin"
+        />
+
+        <div class="relative flex items-center gap-3 py-1">
+          <div class="flex-1 border-t border-default" />
+          <span class="text-xs text-muted">or</span>
+          <div class="flex-1 border-t border-default" />
+        </div>
+
+        <UButton
+          icon="i-simple-icons-google"
+          label="Continue with Google"
+          color="neutral"
+          variant="outline"
+          block
+          :loading="loading"
+          @click="handleGoogleLogin"
+        />
+
+        <p class="text-center text-xs text-muted pt-2">
+          Have an invite?
+          <NuxtLink to="/auth/register" class="text-primary hover:underline">Create an account</NuxtLink>
+        </p>
+      </div>
+    </template>
   </UContainer>
 </template>
