@@ -11,7 +11,6 @@ import {
   EmailAuthProvider,
   updateProfile
 } from 'firebase/auth'
-import { doc, getDoc } from 'firebase/firestore'
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import * as Sentry from '@sentry/nuxt'
 
