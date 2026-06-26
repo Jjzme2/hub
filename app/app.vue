@@ -43,9 +43,9 @@ async function signOut() {
             v-if="store.isAdmin"
             to="/admin"
             icon="i-lucide-settings"
-            label="Admin"
             color="neutral"
             variant="ghost"
+            aria-label="Admin"
           />
           <NotificationBell />
           <UButton
